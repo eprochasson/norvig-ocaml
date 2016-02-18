@@ -78,7 +78,7 @@ let grid_values (grid:string): int option array =
 
 let rec eliminate (i:int) (d: int) (arr: square_value array): unit =
   if not (is_in d arr.(i))
-  then let () = printf "Eliminating %d in position %d: wasn't there\n" d i in () (* Nothing to eliminate *)
+  then () (* Nothing to eliminate *)
   else
     let () = arr.(i) <- List.filter (fun el -> el <> d) arr.(i) in
     let vals = arr.(i) in match vals with
@@ -93,7 +93,7 @@ let rec eliminate (i:int) (d: int) (arr: square_value array): unit =
     (* Iterate over the values left in the unit, see if we can solve a bit more *)
     | _ -> let unts = units (index_to_coord i) in (* List of all the units (as list of square), indexed  *)
            List.iter (fun unt ->
-             let dplaces = List.filter (fun u -> is_in d arr.(i)) unt in (* [s for s in u if d in values[s]] *)
+             let dplaces = List.filter (fun u -> is_in d arr.(coord_to_index u)) unt in (* [s for s in u if d in values[s]] *)
              let () = match dplaces with
              | [] -> raise (Invalid_grid "No possible value left for a square in a unit, giving up")
              | dp :: [] -> assign (coord_to_index dp) d arr
@@ -101,9 +101,7 @@ let rec eliminate (i:int) (d: int) (arr: square_value array): unit =
              in ()
            ) unts
 and assign (i:int) (d: int) (arr: square_value array): unit =
-  let () = printf "Assigning %d in position %d\n" d i in
   let other_values = List.filter (fun el -> el <> d) arr.(i) in
-  let () = printf "Other values left %s\n" (sq_value_to_string other_values) in
   List.iter (fun d2 ->
     eliminate i d2 arr
   ) other_values
@@ -124,14 +122,18 @@ let rec pad str i c = if (String.length str) = i then str else pad (str ^ c) i c
 let display_grid arr: unit =
   let width_column = Array.fold_left (fun acc e1 -> if acc >= List.length e1 then acc else List.length e1) 0 arr in
   let arr' = Array.map (fun s -> sq_value_to_string s) arr in
-  for i = 0 to 81 do
+  let () = Array.iteri (fun i _ ->
     if (i mod (9*3)) = 0 then print_string ("\n" ^ (pad "-" ((width_column * 9) + 2) "-") ^ "\n")
     else if (i mod 9) = 0 then print_string "\n"
     else if (i mod 3) = 0 then print_string "|" else ();
     print_string (pad arr'.(i) width_column " ")
-  done
+  ) arr' in
+  print_string "\n"
+
+
 
 
 let () =
-  let g = "003020600900305001001806400008102900700000008006708200002609500800203009005010300" in
-  display_grid (parse_grid g)
+  (* let g = "003020600900305001001806400008102900700000008006708200002609500800203009005010300" in *)
+  let g' = "4.....8.5.3..........7......2.....6.....8.4......1.......6.3.7.5..2.....1.4......" in
+  display_grid (parse_grid g')

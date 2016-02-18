@@ -1,1 +1,1 @@
-ocamlbuild -use-ocamlfind -I src sudoku.byte
+ocamlbuild -use-ocamlfind -I src sudoku.native
