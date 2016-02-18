@@ -185,7 +185,22 @@ let rec search arr: int list array =
     | None -> raise (Invalid_grid "This grid admits no solution")
     | Some x -> x
 
-let solve grid = search (parse_grid grid)
+let solve grid = let _ = search (parse_grid grid) in ()
+
+let solve_all name problem_list =
+  let len = List.length problem_list in
+  let begin_time = Time.to_epoch (Time.now ()) in
+  let () = List.iter solve problem_list in
+  let total_time = (Time.to_epoch (Time.now ())) -. begin_time in
+  printf "Done. Solved %s (%d problems) in %fs, avg. %f s/problem (%f Hz)\n"
+          name
+          len
+          total_time
+          (total_time /. (float_of_int len))
+          (1. /. (total_time /. (float_of_int len)))
+
+
+(* to try: "...8.1..........435............7.8........1...2..3....6......75..34........2..6.." *)
 
 let () =
   let hardest = [
@@ -298,11 +313,6 @@ let () =
   ".....2.......7...17..3...9.8..7......2.89.6...13..6....9..5.824.....891.........." ;
   "3...8.......7....51..............36...2..4....7...........6.13..452...........8.." ;
   ] in
-  let all_problems = top95 @ hardest in
-  let begin_time = Time.to_epoch (Time.now ()) in
-  let () = List.iter (fun p -> display_grid (solve p)) all_problems in
-  let total_time = (Time.to_epoch (Time.now ())) -. begin_time in
-  printf "Done. %d problems in %fs, avg. %f s/problem\n"
-          (List.length all_problems)
-          total_time
-          (total_time /. (float_of_int (List.length all_problems)))
+    let () = solve_all "hard problems" top95 in
+    let () = solve_all "hardest problems" hardest in
+    ()
