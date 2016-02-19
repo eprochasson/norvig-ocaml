@@ -29,7 +29,7 @@ let unitlist =
   List.map (fun el -> cross [el] cols) rows @ (* All rows *)
   List.flatten (List.map (fun e1 -> List.map (fun e2 -> cross e1 e2) group_col) group_row) (* All boxes *)
 
-(* all the units a givn square belong to *)
+(* all the units a given square belong to *)
 let units (coord: char * int): (char * int) list list =
   List.filter (fun el -> match List.index_of coord el with None -> false | Some _ -> true) unitlist
 
@@ -38,25 +38,53 @@ let peers (coord: char * int): (char * int) list =
   let this_units = units coord in
   List.unique (List.filter (fun el -> el <> coord) (List.flatten this_units))
 
-(* Values of a square *)
-type square_value = int list
+(* Values of a square
+  A square can contain 1 to 9 possible values, indicating potential single value it can still take at this stage
+  of the resolution (if it contains only 1 value, then this square is decided).
+  We code all the value from 1 to 9 as a bit mask (of 9 bits)
+  In other word, each square_value can be coded in an 0 <= int <= 511
+  0 is an impossible value (meaning that that square can not take any value)
+ *)
+type square_value = int
 
 (***********************************************************************************************************************
  Helper functions
 ***********************************************************************************************************************)
-let is_solved arr: bool =
-  let array_all = (fun fn arr -> Array.fold_left (fun acc e -> acc && (fn e)) true arr) in
-  array_all (fun e -> (List.length e) = 1) arr (* Each square has only one value: problem solved *)
 
+let rec is_power_2 = function
+    0 -> false
+  | 1 -> true
+  | x -> if ((x mod 2) = 1) || (x < 0)
+      then false
+      else is_power_2 (x asr 1)
+
+let power_2 deg =
+  let rec _sq2 acc = function
+  | 0 -> acc
+  | x -> _sq2 (2*acc) (x-1)
+  in _sq2 1 deg
+
+let is_decided (sq:square_value): bool = sq = 1 || is_power_2 sq (* If only one value, only one bit set, it's a power of 2 (or 1) *)
+(* That thing basically flips the bit at position v-1 to 0 (and does nothing if it was already at 0 )*)
+let eliminate_value (sq:square_value) (v:int): square_value = sq land (511 lxor (power_2 (v-1)))  (* 511 = 111111111 in binary. *)
+let is_a_value (sq:square_value) (v: int): bool = (eliminate_value sq v) <> sq (* THIS IS GLORIOUS *)
+let get_values (sq:square_value) : int list = List.filter (fun v -> is_a_value sq v) [1;2;3;4;5;6;7;8;9]
+let num_undecided (sq:square_value): int = List.fold_left (fun acc e -> if is_a_value sq e then acc + 1 else acc) 0 [1;2;3;4;5;6;7;8;9]
+let all_but_this_value (sq:square_value) (v: int) = get_values (eliminate_value sq v)
+
+(* Iterate through a list, return the first element of the list that is true *)
 let rec list_first_that_returns (fn: 'a -> 'b option) (l: 'a list): 'b option = match l with
   | [] -> None
   | hd::tl -> let t = (fn hd) in match t with
     | None -> list_first_that_returns fn tl
     | Some x -> Some x
 
-let sq_value_to_string (sq: int list): string = List.fold_left (fun acc s -> acc ^ (string_of_int s)) "" sq
+let sq_value_to_string (sq: square_value): string = List.fold_left (fun acc s -> acc ^ (string_of_int s)) "" (get_values sq)
 
-let is_in (i:int) (sq: square_value) = let x = List.index_of i sq in match x with None -> false | _ -> true
+let is_solved (arr: square_value array): bool =
+  let array_all = (fun fn arr -> Array.fold_left (fun acc e -> acc && (fn e)) true arr) in
+  array_all (fun e -> is_decided e) arr (* Each square has only one value: problem solved *)
+
 
 (* Coordinate to Grid-as-array index*)
 let coord_to_index (coord: char * int): int =
@@ -95,8 +123,8 @@ let grid_values (grid:string): int option array =
 (* Add space at the end of a string to make it of size i *)
 let rec pad str i c = if (String.length str) = i then str else pad (str ^ c) i c
 let display_grid arr: unit =
-  let width_column = Array.fold_left (fun acc e1 -> if acc >= List.length e1 then acc else List.length e1) 0 arr in
   let arr' = Array.map (fun s -> sq_value_to_string s) arr in
+  let width_column = Array.fold_left (fun acc e1 -> if acc >= String.length e1 then acc else String.length e1) 0 arr' in
   let () = Array.iteri (fun i _ ->
     if (i mod (9*3)) = 0 then print_string ("\n" ^ (pad "-" ((width_column * 9) + 2) "-") ^ "\n")
     else if (i mod 9) = 0 then print_string "\n"
@@ -106,8 +134,8 @@ let display_grid arr: unit =
   print_string "\n"
 
 (* Square containing more than one value are undecided: retrieve the undecided square with the least number of values *)
-let get_smallest_indecision_square arr: int option =
-  let arr' = Array.mapi (fun i e -> (i, List.length e)) arr in
+let get_smallest_indecision_square (arr: square_value array): int option =
+  let arr' = Array.mapi (fun i e -> (i, num_undecided e)) arr in
   let (is, _) = Array.fold_left (fun acc e ->
     let sq, len = acc in (* int option * int *)
     let sq',len' = e in (* int * int *)
@@ -120,47 +148,50 @@ let get_smallest_indecision_square arr: int option =
 (***********************************************************************************************************************
   Problem solving starts here
 ***********************************************************************************************************************)
-let rec eliminate (i:int) (d: int) (arr: square_value array): unit =
-  if not (is_in d arr.(i))
+let rec eliminate (id:int) (v: int) (arr: square_value array): unit =
+  if not (is_a_value arr.(id) v)
   then () (* Nothing to eliminate *)
   else
-    let () = arr.(i) <- List.filter (fun el -> el <> d) arr.(i) in (* Leave all values but the one to eliminate *)
-    let vals = arr.(i) in match vals with
+    (* let () = printf "Eliminating value %d at position %d\n" v id in *)
+    (* let () = printf "Value was %d\n" arr.(id) in *)
+    let () = arr.(id) <- eliminate_value arr.(id) v in (* Leave all values but the one to eliminate *)
+    (* let () = printf "Now is %d \n" arr.(id) in *)
+    let vals = get_values arr.(id) in match vals with
     (* No more possible values something went wrong *)
     | [] -> raise (Invalid_grid "Eliminated last possible value for a square: grid can not be solved")
     (* One value left, awesome, let's eliminate it from its peers *)
-    | d2 :: [] -> peers (index_to_coord i)  (* List of coord, all the value that must differ from the previous one *)
+    | d2 :: [] -> peers (index_to_coord id)  (* List of coord, all the value that must differ from the previous one *)
                   |>
                   List.map coord_to_index (* same, as index in the grid-as-array *)
                   |>
                   List.iter (fun s2 -> eliminate s2 d2 arr) (* (try to) eliminate the value d2 from all the peers *)
     (* Iterate over the values left in the unit, see if we can solve a bit more *)
-    | _ -> let unts = units (index_to_coord i) in (* List of all the units (as list of square), indexed  *)
+    | _ -> let unts = units (index_to_coord id) in (* List of all the units (as list of square), indexed  *)
            List.iter (fun unt ->
-             let dplaces = List.filter (fun u -> is_in d arr.(coord_to_index u)) unt in (* [s for s in u if d in values[s]] *)
+             let dplaces = List.filter (fun u -> is_a_value arr.(coord_to_index u) v) unt in (* [s for s in u if d in values[s]] *)
              let () = match dplaces with
              | [] -> raise (Invalid_grid "No possible value left for a square in a unit, giving up")
-             | dp :: [] -> assign (coord_to_index dp) d arr
+             | dp :: [] -> assign (coord_to_index dp) v arr
              | _ -> ()
              in ()
            ) unts
-and assign (i:int) (d: int) (arr: square_value array): unit =
-  let other_values = List.filter (fun el -> el <> d) arr.(i) in
-  List.iter (fun d2 ->
-    eliminate i d2 arr
+and assign (id:int) (v: int) (arr: square_value array): unit =
+  let other_values = get_values (eliminate_value arr.(id) v) in
+  List.iter (fun v2 ->
+    eliminate id v2 arr
   ) other_values
 
-let parse_grid (grid:string): int list array =
-  let res = Array.create 81 [1;2;3;4;5;6;7;8;9] in (* At the beginning, each square can be of any value *)
+let parse_grid (grid:string): square_value array =
+  let res = Array.create 81 511 in (* At the beginning, each square can be of any value *)
   let grid = grid_values grid in
-  let assign = (fun i d -> assign i d res) in (* Update res *)
-  let _ = Array.iteri (fun i d -> match d with
+  let assign = (fun id v -> assign id v res) in (* Update res *)
+  let _ = Array.iteri (fun id v -> match v with
     | None -> ()
-    | Some x -> assign i x
+    | Some x -> assign id x
   ) grid in
   res
 
-let rec search arr: int list array =
+let rec search arr: square_value array =
   if is_solved arr then arr
   else
     (* Get the square with the least number of indecided values, pick the first one and see what happens *)
@@ -171,7 +202,7 @@ let rec search arr: int list array =
                                                               earlier *)
       | Some x -> x
     in
-    let choices = arr.(is) in (* The value we could assign to this square, we'll test them all *)
+    let choices = get_values arr.(is) in (* The value we could assign to this square, we'll test them all *)
     let response = list_first_that_returns (fun v -> (* Stops when an valid answer has been found *)
       let arr_copy = Array.copy arr in (* Copy the array *)
       try
