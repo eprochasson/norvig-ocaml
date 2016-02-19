@@ -21,7 +21,15 @@ Done. Solved hard problems (95 problems) in 1.963730s, avg. 0.020671 s/problem (
 Done. Solved hardest problems (11 problems) in 0.077885s, avg. 0.007080 s/problem (141.234029 Hz)
 ```
 
-It's about twice as fast as Norvig's, which tells us nothing since it's not the same machine (I'm not even sure it's the same _decade_ either).
+For comparison, on the same laptop, here are the results obtained by Norvig's script:
+
+```
+All tests pass.
+Solved 95 of 95 hard puzzles (avg 0.01 secs (97 Hz), max 0.05 secs).
+Solved 11 of 11 hardest puzzles (avg 0.00 secs (256 Hz), max 0.01 secs).
+```
+
+The ocaml version seems to need quite some optimisation.
 
 ## Licence
 

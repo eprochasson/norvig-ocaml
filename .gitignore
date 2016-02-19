@@ -2,3 +2,6 @@ _build/
 *.byte
 *.native
 test/test_async.ml
+sudoku.py
+top95.txt
+hardest.txt
