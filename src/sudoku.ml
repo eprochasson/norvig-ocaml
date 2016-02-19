@@ -23,6 +23,25 @@ let squares = cross rows cols
 let group_row = [['a';'b';'c'] ; ['d';'e';'f'] ; ['g';'h';'i']]
 let group_col = [[1;2;3] ; [4;5;6] ; [7;8;9]]
 
+(* Coordinate to Grid-as-array index*)
+let coord_to_index (coord: char * int): int =
+  let row, col = coord in
+  let row = match row with
+  | 'a' -> 0 | 'b' -> 1 | 'c' -> 2 | 'd' -> 3 | 'e' -> 4 | 'f' -> 5 | 'g' -> 6 | 'h' -> 7 | 'i' -> 8
+  | _ -> raise (Invalid_argument "Index out of bound") in
+  let col = col - 1 in
+  row * 9 + col
+
+(* Index to coordinate *)
+let index_to_coord (index:int): (char * int) =
+  let row = index / 9 in
+  let row = match row with
+  | 0 -> 'a' | 1 -> 'b' | 2 -> 'c' | 3 -> 'd' | 4 -> 'e' | 5 -> 'f' | 6 -> 'g' | 7 -> 'h' | 8 -> 'i'
+  | _ -> raise (Invalid_argument "Index out of bound") in
+  let col = (index mod 9) + 1 in
+  (row, col)
+
+
 (* All units *)
 let unitlist =
   List.map (fun el -> cross rows [el]) cols @ (* All columns *)
@@ -84,25 +103,6 @@ let sq_value_to_string (sq: square_value): string = List.fold_left (fun acc s ->
 let is_solved (arr: square_value array): bool =
   let array_all = (fun fn arr -> Array.fold_left (fun acc e -> acc && (fn e)) true arr) in
   array_all (fun e -> is_decided e) arr (* Each square has only one value: problem solved *)
-
-
-(* Coordinate to Grid-as-array index*)
-let coord_to_index (coord: char * int): int =
-  let row, col = coord in
-  let row = match row with
-  | 'a' -> 0 | 'b' -> 1 | 'c' -> 2 | 'd' -> 3 | 'e' -> 4 | 'f' -> 5 | 'g' -> 6 | 'h' -> 7 | 'i' -> 8
-  | _ -> raise (Invalid_argument "Index out of bound") in
-  let col = col - 1 in
-  row * 9 + col
-
-(* Index to coordinate *)
-let index_to_coord (index:int): (char * int) =
-  let row = index / 9 in
-  let row = match row with
-  | 0 -> 'a' | 1 -> 'b' | 2 -> 'c' | 3 -> 'd' | 4 -> 'e' | 5 -> 'f' | 6 -> 'g' | 7 -> 'h' | 8 -> 'i'
-  | _ -> raise (Invalid_argument "Index out of bound") in
-  let col = (index mod 9) + 1 in
-  (row, col)
 
 (* Read the puzzle and generate the grid *)
 let grid_values (grid:string): int option array =
