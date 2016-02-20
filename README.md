@@ -28,7 +28,8 @@ make much difference. It makes the code a little bit harder to read, but a lot m
 
 ## Benchmark
 
-Got the following output from a subset of the problems use in Norvig's page (because the other are not that easily accessible).
+Got the following output from a subset of the problems use in Norvig's page
+(because the other are not that easily accessible), using a natively compiled code.
 
 ```
 Done. Solved hard problems (95 problems) in 0.188034s, avg. 0.001979 s/problem (505.227623 Hz)
@@ -44,6 +45,13 @@ Solved 11 of 11 hardest puzzles (avg 0.00 secs (247 Hz), max 0.01 secs).
 ```
 
 The ocaml version is 5 to 6 times faster than the python implementation.
+
+FWIW, results for bytecode-compiled code:
+
+```
+Done. Solved hard problems (95 problems) in 2.373720s, avg. 0.024987 s/problem (40.021571 Hz)
+Done. Solved hardest problems (11 problems) in 0.086108s, avg. 0.007828 s/problem (127.746596 Hz)
+```
 
 ## Licence
 
