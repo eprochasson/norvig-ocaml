@@ -1,6 +1,6 @@
 # OCaml Sudoku Solver
 
-Based on the algorithm described (http://norvig.com/sudoku.html)[here].
+Based on the algorithm described [here](http://norvig.com/sudoku.html).
 
 It works. And is indeed blazing fast.
 
