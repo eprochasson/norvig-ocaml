@@ -2,61 +2,11 @@
 open Core.Std
 open Batteries
 
-
 exception Invalid_grid of string
 
 (***********************************************************************************************************************
  Useful definitions
 ***********************************************************************************************************************)
-(* Cartesian product *)
-let cross (a: 'a list) (b : 'b list): ('a * 'b) list = List.flatten (List.map (fun ia -> List.map (fun ib -> (ia, ib)) b) a)
-
-(* Valid rows *)
-let rows = ['a';'b';'c';'d';'e';'f';'g';'h';'i']
-(* Valid column *)
-let cols = [1;2;3;4;5;6;7;8;9]
-
-(* All valid squares *)
-let squares = cross rows cols
-
-(* Boxes *)
-let group_row = [['a';'b';'c'] ; ['d';'e';'f'] ; ['g';'h';'i']]
-let group_col = [[1;2;3] ; [4;5;6] ; [7;8;9]]
-
-(* Coordinate to Grid-as-array index*)
-let coord_to_index (coord: char * int): int =
-  let row, col = coord in
-  let row = match row with
-  | 'a' -> 0 | 'b' -> 1 | 'c' -> 2 | 'd' -> 3 | 'e' -> 4 | 'f' -> 5 | 'g' -> 6 | 'h' -> 7 | 'i' -> 8
-  | _ -> raise (Invalid_argument "Index out of bound") in
-  let col = col - 1 in
-  row * 9 + col
-
-(* Index to coordinate *)
-let index_to_coord (index:int): (char * int) =
-  let row = index / 9 in
-  let row = match row with
-  | 0 -> 'a' | 1 -> 'b' | 2 -> 'c' | 3 -> 'd' | 4 -> 'e' | 5 -> 'f' | 6 -> 'g' | 7 -> 'h' | 8 -> 'i'
-  | _ -> raise (Invalid_argument "Index out of bound") in
-  let col = (index mod 9) + 1 in
-  (row, col)
-
-
-(* All units *)
-let unitlist =
-  List.map (fun el -> cross rows [el]) cols @ (* All columns *)
-  List.map (fun el -> cross [el] cols) rows @ (* All rows *)
-  List.flatten (List.map (fun e1 -> List.map (fun e2 -> cross e1 e2) group_col) group_row) (* All boxes *)
-
-(* all the units a given square belong to *)
-let units (coord: char * int): (char * int) list list =
-  List.filter (fun el -> match List.index_of coord el with None -> false | Some _ -> true) unitlist
-
-(* All the peers of a given square *)
-let peers (coord: char * int): (char * int) list =
-  let this_units = units coord in
-  List.unique (List.filter (fun el -> el <> coord) (List.flatten this_units))
-
 (* Values of a square
   A square can contain 1 to 9 possible values, indicating potential single value it can still take at this stage
   of the resolution (if it contains only 1 value, then this square is decided).
@@ -65,6 +15,31 @@ let peers (coord: char * int): (char * int) list =
   0 is an impossible value (meaning that that square can not take any value)
  *)
 type square_value = int
+
+(* All the units (= set of square that needs be different) *)
+let unitlist =
+  let offset_by = fun l off -> List.map (fun a -> a + off) l in
+  let first_column = [ 0 ; 9 ; 18 ; 27 ; 36 ; 45 ; 54 ; 63 ; 72 ] in
+  let first_row = [ 0 ; 1 ; 2 ; 3 ; 4 ; 5 ; 6 ; 7 ; 8 ] in
+  let first_box = [ 0 ; 1 ; 2 ; 9 ; 10 ; 11 ; 18 ; 19 ; 20 ] in
+  let box_offsets = [ 0 ; 3 ; 6 ; 27 ; 30 ; 33 ; 54 ; 57 ; 60 ] in
+  let digit = [0;1;2;3;4;5;6;7;8] in (* Rows and column index *)
+  let cols = List.map (fun d -> offset_by first_column d) digit in
+  let rows = List.map (fun d -> offset_by first_row (d*9)) digit in
+  let boxes = List.map (fun d -> offset_by first_box d) box_offsets in
+  rows @ cols @ boxes
+
+
+(* Build an array, associate each square index in the grid a list of all the units it belongs to *)
+let units =
+  let zeros = Array.make 81 0 in
+  let all_squares = Array.mapi (fun i _ -> i) zeros in (* [| 0 ; 1 ; 2 ; 3 ; .. ; 81 |] *)
+  let units_of_square = (fun sq -> List.filter (fun el -> match List.index_of sq el with None -> false | Some _ -> true) unitlist) in
+  Array.map (fun i -> units_of_square i) all_squares
+
+(* Same, but for the peers *)
+let peers =
+  Array.mapi (fun i u -> List.unique (List.filter (fun el -> el <> i) (List.flatten u))) units
 
 (***********************************************************************************************************************
  Helper functions
@@ -160,18 +135,16 @@ let rec eliminate (id:int) (v: int) (arr: square_value array): unit =
     (* No more possible values something went wrong *)
     | [] -> raise (Invalid_grid "Eliminated last possible value for a square: grid can not be solved")
     (* One value left, awesome, let's eliminate it from its peers *)
-    | d2 :: [] -> peers (index_to_coord id)  (* List of coord, all the value that must differ from the previous one *)
-                  |>
-                  List.map coord_to_index (* same, as index in the grid-as-array *)
+    | d2 :: [] -> peers.(id)  (* List of coord, all the value that must differ from the previous one *)
                   |>
                   List.iter (fun s2 -> eliminate s2 d2 arr) (* (try to) eliminate the value d2 from all the peers *)
     (* Iterate over the values left in the unit, see if we can solve a bit more *)
-    | _ -> let unts = units (index_to_coord id) in (* List of all the units (as list of square), indexed  *)
+    | _ -> let unts = units.(id) in (* List of all the units (as list of square), indexed  *)
            List.iter (fun unt ->
-             let dplaces = List.filter (fun u -> is_a_value arr.(coord_to_index u) v) unt in (* [s for s in u if d in values[s]] *)
+             let dplaces = List.filter (fun u -> is_a_value arr.(u) v) unt in (* [s for s in u if d in values[s]] *)
              let () = match dplaces with
              | [] -> raise (Invalid_grid "No possible value left for a square in a unit, giving up")
-             | dp :: [] -> assign (coord_to_index dp) v arr
+             | dp :: [] -> assign (dp) v arr
              | _ -> ()
              in ()
            ) unts
