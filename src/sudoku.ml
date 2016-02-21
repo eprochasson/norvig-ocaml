@@ -29,7 +29,6 @@ let unitlist =
   let boxes = List.map (fun d -> offset_by first_box d) box_offsets in
   rows @ cols @ boxes
 
-
 (* Build an array, associate each square index in the grid a list of all the units it belongs to *)
 let units =
   let zeros = Array.make 81 0 in
@@ -48,32 +47,37 @@ let peers =
 let rec is_power_2 = function
     0 -> false
   | 1 -> true
-  | x -> if ((x mod 2) = 1) || (x < 0)
+  | x -> if ((x mod 2) = 1)
       then false
       else is_power_2 (x asr 1)
 
-let power_2 deg =
+let power_2 deg = 1 lsl deg
+
+(* let power_2 deg = (* Original, ok speed version *)
   let rec _sq2 acc = function
   | 0 -> acc
   | x -> _sq2 (2*acc) (x-1)
   in _sq2 1 deg
 
-let is_decided (sq:square_value): bool = sq = 1 || is_power_2 sq (* If only one value, only one bit set, it's a power of 2 (or 1) *)
+let power_2 deg = Int.pow 2 deg (* Slowest version *) *)
+
+let is_decided (sq:square_value): bool = is_power_2 sq (* If only one value, only one bit set, it's a power of 2 (or 1) *)
 (* That thing basically flips the bit at position v-1 to 0 (and does nothing if it was already at 0 )*)
 let eliminate_value (sq:square_value) (v:int): square_value = sq land (511 lxor (power_2 (v-1)))  (* 511 = 111111111 in binary. *)
-let is_a_value (sq:square_value) (v: int): bool = (eliminate_value sq v) <> sq (* THIS IS GLORIOUS *)
+(* Check if a value is undecided in this square *)
+let is_a_value (sq:square_value) (v: int): bool = (eliminate_value sq v) <> sq
+(* Convert a value into a square_value *)
+let as_value (v:int): square_value = power_2 (v-1)
 let get_values (sq:square_value) : int list = List.filter (fun v -> is_a_value sq v) [1;2;3;4;5;6;7;8;9]
 let num_undecided (sq:square_value): int = List.fold_left (fun acc e -> if is_a_value sq e then acc + 1 else acc) 0 [1;2;3;4;5;6;7;8;9]
 let all_but_this_value (sq:square_value) (v: int) = get_values (eliminate_value sq v)
 
-(* Iterate through a list, return the first element of the list that is true *)
+(* Iterate through a list, lazily apply a function to its element until it returns a non-null value *)
 let rec list_first_that_returns (fn: 'a -> 'b option) (l: 'a list): 'b option = match l with
   | [] -> None
   | hd::tl -> let t = (fn hd) in match t with
     | None -> list_first_that_returns fn tl
     | Some x -> Some x
-
-let sq_value_to_string (sq: square_value): string = List.fold_left (fun acc s -> acc ^ (string_of_int s)) "" (get_values sq)
 
 let is_solved (arr: square_value array): bool =
   let array_all = (fun fn arr -> Array.fold_left (fun acc e -> acc && (fn e)) true arr) in
@@ -97,6 +101,7 @@ let grid_values (grid:string): int option array =
 
 (* Add space at the end of a string to make it of size i *)
 let rec pad str i c = if (String.length str) = i then str else pad (str ^ c) i c
+let sq_value_to_string (sq: square_value): string = List.fold_left (fun acc s -> acc ^ (string_of_int s)) "" (get_values sq)
 let display_grid arr: unit =
   let arr' = Array.map (fun s -> sq_value_to_string s) arr in
   let width_column = Array.fold_left (fun acc e1 -> if acc >= String.length e1 then acc else String.length e1) 0 arr' in
