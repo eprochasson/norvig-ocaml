@@ -57,9 +57,9 @@ let power_2 deg = 1 lsl deg
   let rec _sq2 acc = function
   | 0 -> acc
   | x -> _sq2 (2*acc) (x-1)
-  in _sq2 1 deg
+  in _sq2 1 deg *)
 
-let power_2 deg = Int.pow 2 deg (* Slowest version *) *)
+(* let power_2 deg = Int.pow 2 deg (* Slowest version *) *)
 
 let is_decided (sq:square_value): bool = is_power_2 sq (* If only one value, only one bit set, it's a power of 2 (or 1) *)
 (* That thing basically flips the bit at position v-1 to 0 (and does nothing if it was already at 0 )*)
@@ -82,6 +82,23 @@ let rec list_first_that_returns (fn: 'a -> 'b option) (l: 'a list): 'b option = 
 let is_solved (arr: square_value array): bool =
   let array_all = (fun fn arr -> Array.fold_left (fun acc e -> acc && (fn e)) true arr) in
   array_all (fun e -> is_decided e) arr (* Each square has only one value: problem solved *)
+
+let is_valid_solution (arr: square_value array): bool =
+  try
+    let () = Array.iteri (fun i e ->
+      let () = assert (List.length (get_values e) = 1) in (* One solution per square *)
+      (* Each unit contains different values *)
+      List.iter (fun unt ->
+        assert (
+          (List.map (fun u -> arr.(u)) unt
+          |>
+          List.unique
+          |> List.length) = 9)
+      ) units.(i)
+    ) arr in
+    true
+  with
+    Assert_failure _ -> false
 
 (* Read the puzzle and generate the grid *)
 let grid_values (grid:string): int option array =
@@ -132,8 +149,6 @@ let rec eliminate (id:int) (v: int) (arr: square_value array): unit =
   if not (is_a_value arr.(id) v)
   then () (* Nothing to eliminate *)
   else
-    (* let () = printf "Eliminating value %d at position %d\n" v id in *)
-    (* let () = printf "Value was %d\n" arr.(id) in *)
     let () = arr.(id) <- eliminate_value arr.(id) v in (* Leave all values but the one to eliminate *)
     (* let () = printf "Now is %d \n" arr.(id) in *)
     let vals = get_values arr.(id) in match vals with
@@ -194,24 +209,32 @@ let rec search arr: square_value array =
     | None -> raise (Invalid_grid "This grid admits no solution")
     | Some x -> x
 
-let solve grid = let _ = search (parse_grid grid) in ()
+let solve grid = search (parse_grid grid)
+
+let time_one problem =
+  let begin_time = Time.to_epoch (Time.now ()) in
+  let solution = solve problem in
+  let total_time = (Time.to_epoch (Time.now ())) -. begin_time in
+  let _ = assert (is_valid_solution solution) in
+  total_time
 
 let solve_all name problem_list =
-  let len = List.length problem_list in
-  let begin_time = Time.to_epoch (Time.now ()) in
-  let () = List.iter solve problem_list in
-  let total_time = (Time.to_epoch (Time.now ())) -. begin_time in
-  printf "Done. Solved %s (%d problems) in %fs, avg. %f s/problem (%f Hz)\n"
+  let times = List.map (fun p -> time_one p) problem_list in
+  let total_time = (List.fold_left (fun acc e -> acc +. e) 0. times) in
+  let max_time = (List.fold_left (fun acc e -> if e > acc then e else acc) 0. times) in
+  printf "Done. Solved %s (%d problems) in %fs, avg. %f s/problem (%f Hz | max: %fs)\n"
           name
-          len
+          (List.length problem_list)
           total_time
-          (total_time /. (float_of_int len))
-          (1. /. (total_time /. (float_of_int len)))
+          (total_time /. (float_of_int (List.length problem_list)))
+          (1. /. (total_time /. (float_of_int (List.length problem_list))))
+          max_time
 
 
 (* to try: "...8.1..........435............7.8........1...2..3....6......75..34........2..6.." *)
 
 let () =
+  let super_duper_hard = [".....6....59.....82....8....45........3........6..3.54...325..6.................."] in
   let hardest = [
   "85...24..72......9..4.........1.7..23.5...9...4...........8..7..17..........36.4." ;
   "..53.....8......2..7..1.5..4....53...1..7...6..32...8..6.5....9..4....3......97.." ;
@@ -324,4 +347,5 @@ let () =
   ] in
     let () = solve_all "hard problems" top95 in
     let () = solve_all "hardest problems" hardest in
+    let () = solve_all "artificially hard" super_duper_hard in
     ()
