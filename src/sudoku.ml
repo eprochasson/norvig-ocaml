@@ -85,8 +85,8 @@ let is_solved (arr: square_value array): bool =
 
 let is_valid_solution (arr: square_value array): bool =
   try
-    let () = Array.iteri (fun i e ->
-      let () = assert (List.length (get_values e) = 1) in (* One solution per square *)
+    Array.iteri (fun i e ->
+      assert (List.length (get_values e) = 1) ; (* One solution per square *)
       (* Each unit contains different values *)
       List.iter (fun unt ->
         assert (
@@ -95,7 +95,7 @@ let is_valid_solution (arr: square_value array): bool =
           List.unique
           |> List.length) = 9)
       ) units.(i)
-    ) arr in
+    ) arr ;
     true
   with
     Assert_failure _ -> false
@@ -104,11 +104,8 @@ let is_valid_solution (arr: square_value array): bool =
 let grid_values (grid:string): int option array =
   let valid_symbols = "1234567890." in
   let filtered = String.filter (fun el -> String.contains valid_symbols el) grid in
-  let _ =
-    if (String.length filtered) <> 81
-    then raise (Invalid_grid "Grid size must be 81")
-    else ()
-  in
+  if (String.length filtered) <> 81
+    then raise (Invalid_grid "Grid size must be 81") ;
   let g = List.map (fun el ->
     if el = '.' || el = '0'
     then None
@@ -122,12 +119,12 @@ let sq_value_to_string (sq: square_value): string = List.fold_left (fun acc s ->
 let display_grid arr: unit =
   let arr' = Array.map (fun s -> sq_value_to_string s) arr in
   let width_column = Array.fold_left (fun acc e1 -> if acc >= String.length e1 then acc else String.length e1) 0 arr' in
-  let () = Array.iteri (fun i _ ->
+  Array.iteri (fun i _ ->
     if (i mod (9*3)) = 0 then print_string ("\n" ^ (pad "-" ((width_column * 9) + 2) "-") ^ "\n")
     else if (i mod 9) = 0 then print_string "\n"
     else if (i mod 3) = 0 then print_string "|" else ();
     print_string (pad arr'.(i) width_column " ")
-  ) arr' in
+  ) arr' ;
   print_string "\n"
 
 (* Square containing more than one value are undecided: retrieve the undecided square with the least number of values *)
@@ -146,10 +143,8 @@ let get_smallest_indecision_square (arr: square_value array): int option =
   Problem solving starts here
 ***********************************************************************************************************************)
 let rec eliminate (id:int) (v: int) (arr: square_value array): unit =
-  if not (is_a_value arr.(id) v)
-  then () (* Nothing to eliminate *)
-  else
-    let () = arr.(id) <- eliminate_value arr.(id) v in (* Leave all values but the one to eliminate *)
+  if is_a_value arr.(id) v then begin
+    arr.(id) <- eliminate_value arr.(id) v ; (* Leave all values but the one to eliminate *)
     (* let () = printf "Now is %d \n" arr.(id) in *)
     let vals = get_values arr.(id) in match vals with
     (* No more possible values something went wrong *)
@@ -162,12 +157,12 @@ let rec eliminate (id:int) (v: int) (arr: square_value array): unit =
     | _ -> let unts = units.(id) in (* List of all the units (as list of square), indexed  *)
            List.iter (fun unt ->
              let dplaces = List.filter (fun u -> is_a_value arr.(u) v) unt in (* [s for s in u if d in values[s]] *)
-             let () = match dplaces with
+             match dplaces with
              | [] -> raise (Invalid_grid "No possible value left for a square in a unit, giving up")
              | dp :: [] -> assign (dp) v arr
              | _ -> ()
-             in ()
            ) unts
+  end
 and assign (id:int) (v: int) (arr: square_value array): unit =
   let other_values = get_values (eliminate_value arr.(id) v) in
   List.iter (fun v2 ->
@@ -178,10 +173,10 @@ let parse_grid (grid:string): square_value array =
   let res = Array.create 81 511 in (* At the beginning, each square can be of any value *)
   let grid = grid_values grid in
   let assign = (fun id v -> assign id v res) in (* Update res *)
-  let _ = Array.iteri (fun id v -> match v with
+  Array.iteri (fun id v -> match v with
     | None -> ()
     | Some x -> assign id x
-  ) grid in
+  ) grid ;
   res
 
 let rec search arr: square_value array =
@@ -199,7 +194,7 @@ let rec search arr: square_value array =
     let response = list_first_that_returns (fun v -> (* Stops when an valid answer has been found *)
       let arr_copy = Array.copy arr in (* Copy the array *)
       try
-        let () = assign is v arr_copy in (* Try the assign/eliminate dance (raises an exception if a value is invalid) *)
+        assign is v arr_copy ; (* Try the assign/eliminate dance (raises an exception if a value is invalid) *)
         let res = search arr_copy in (* Move to the next value to pivot *)
         Some res
       with
@@ -215,7 +210,7 @@ let time_one problem =
   let begin_time = Time.to_epoch (Time.now ()) in
   let solution = solve problem in
   let total_time = (Time.to_epoch (Time.now ())) -. begin_time in
-  let _ = assert (is_valid_solution solution) in
+  assert (is_valid_solution solution) ;
   total_time
 
 let solve_all name problem_list =
@@ -345,7 +340,6 @@ let () =
   ".....2.......7...17..3...9.8..7......2.89.6...13..6....9..5.824.....891.........." ;
   "3...8.......7....51..............36...2..4....7...........6.13..452...........8.." ;
   ] in
-    let () = solve_all "hard problems" top95 in
-    let () = solve_all "hardest problems" hardest in
-    let () = solve_all "artificially hard" super_duper_hard in
-    ()
+  solve_all "hard problems" top95 ;
+  solve_all "hardest problems" hardest ;
+  solve_all "artificially hard" super_duper_hard
