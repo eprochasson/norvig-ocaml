@@ -121,7 +121,7 @@ let display_grid arr: unit =
   Array.iteri (fun i _ ->
     if (i mod (9*3)) = 0 then print_string ("\n" ^ (pad "-" ((width_column * 9) + 2) "-") ^ "\n")
     else if (i mod 9) = 0 then print_string "\n"
-    else if (i mod 3) = 0 then print_string "|" else ();
+    else if (i mod 3) = 0 then print_string "|" ;
     print_string (pad arr'.(i) width_column " ")
   ) arr' ;
   print_string "\n"
