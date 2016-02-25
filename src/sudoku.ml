@@ -47,9 +47,8 @@ let peers =
 let rec is_power_2 = function
     0 -> false
   | 1 -> true
-  | x -> if ((x mod 2) = 1)
-      then false
-      else is_power_2 (x asr 1)
+  | x when x mod 2 = 1 -> false
+  | x -> is_power_2 (x asr 1)
 
 let power_2 deg = 1 lsl deg
 
