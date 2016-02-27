@@ -74,7 +74,7 @@ let all_but_this_value (sq:square_value) (v: int) = get_values (eliminate_value 
 (* Iterate through a list, lazily apply a function to its element until it returns a non-null value *)
 let rec list_first_that_returns (fn: 'a -> 'b option) (l: 'a list): 'b option = match l with
   | [] -> None
-  | hd::tl -> let t = (fn hd) in match t with
+  | hd::tl -> match fn hd with
     | None -> list_first_that_returns fn tl
     | Some x -> Some x
 
