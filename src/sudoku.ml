@@ -182,8 +182,7 @@ let rec search arr: square_value array =
   if is_solved arr then arr
   else
     (* Get the square with the least number of indecided values, pick the first one and see what happens *)
-    let is = get_smallest_indecision_square arr in
-    let is = match is with
+    let is = match get_smallest_indecision_square arr with
       | None -> raise (Invalid_grid "It shouldn't happen") (* if it happens, it means there are no undecided square
                                                               left, meaning the problem is solved, meaning we exited
                                                               earlier *)
