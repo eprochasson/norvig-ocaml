@@ -33,7 +33,7 @@ let unitlist =
 let units =
   let zeros = Array.make 81 0 in
   let all_squares = Array.mapi (fun i _ -> i) zeros in (* [| 0 ; 1 ; 2 ; 3 ; .. ; 81 |] *)
-  let units_of_square = (fun sq -> List.filter (fun el -> List.mem sq el) unitlist) in
+  let units_of_square = (fun sq -> List.filter (fun el -> match List.index_of sq el with None -> false | Some _ -> true) unitlist) in
   Array.map (fun i -> units_of_square i) all_squares
 
 (* Same, but for the peers *)
@@ -74,7 +74,7 @@ let all_but_this_value (sq:square_value) (v: int) = get_values (eliminate_value 
 (* Iterate through a list, lazily apply a function to its element until it returns a non-null value *)
 let rec list_first_that_returns (fn: 'a -> 'b option) (l: 'a list): 'b option = match l with
   | [] -> None
-  | hd::tl -> match fn hd with
+  | hd::tl -> let t = (fn hd) in match t with
     | None -> list_first_that_returns fn tl
     | Some x -> Some x
 
@@ -129,11 +129,12 @@ let display_grid arr: unit =
 (* Square containing more than one value are undecided: retrieve the undecided square with the least number of values *)
 let get_smallest_indecision_square (arr: square_value array): int option =
   let arr' = Array.mapi (fun i e -> (i, num_undecided e)) arr in
-  let (is, _) = Array.fold_left (fun (sq, len) (sq', len') ->
-    match sq, len' with
-    | None, l when l > 1 -> Some sq', len'
-    | Some x, l when l > 1 && l < len -> Some sq', len'
-    | _ -> sq, len
+  let (is, _) = Array.fold_left (fun acc e ->
+    let sq, len = acc in (* int option * int *)
+    let sq',len' = e in (* int * int *)
+    match sq with
+    | None -> if (len' > 1) then (Some sq', len') else acc
+    | Some x -> if (len' > 1) && (len' < len) then (Some sq', len') else acc
   ) (None, 0) arr' in
   is
 
@@ -181,7 +182,8 @@ let rec search arr: square_value array =
   if is_solved arr then arr
   else
     (* Get the square with the least number of indecided values, pick the first one and see what happens *)
-    let is = match get_smallest_indecision_square arr with
+    let is = get_smallest_indecision_square arr in
+    let is = match is with
       | None -> raise (Invalid_grid "It shouldn't happen") (* if it happens, it means there are no undecided square
                                                               left, meaning the problem is solved, meaning we exited
                                                               earlier *)
