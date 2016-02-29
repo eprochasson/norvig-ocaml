@@ -33,7 +33,7 @@ let unitlist =
 let units =
   let zeros = Array.make 81 0 in
   let all_squares = Array.mapi (fun i _ -> i) zeros in (* [| 0 ; 1 ; 2 ; 3 ; .. ; 81 |] *)
-  let units_of_square = (fun sq -> List.filter (fun el -> match List.index_of sq el with None -> false | Some _ -> true) unitlist) in
+  let units_of_square sq = List.filter (List.mem sq) unitlist in
   Array.map (fun i -> units_of_square i) all_squares
 
 (* Same, but for the peers *)
