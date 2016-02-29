@@ -74,7 +74,7 @@ let all_but_this_value (sq:square_value) (v: int) = get_values (eliminate_value 
 (* Iterate through a list, lazily apply a function to its element until it returns a non-null value *)
 let rec list_first_that_returns (fn: 'a -> 'b option) (l: 'a list): 'b option = match l with
   | [] -> None
-  | hd::tl -> let t = (fn hd) in match t with
+  | hd::tl -> match fn hd with
     | None -> list_first_that_returns fn tl
     | Some x -> Some x
 
@@ -182,8 +182,7 @@ let rec search arr: square_value array =
   if is_solved arr then arr
   else
     (* Get the square with the least number of indecided values, pick the first one and see what happens *)
-    let is = get_smallest_indecision_square arr in
-    let is = match is with
+    let is = match get_smallest_indecision_square arr with
       | None -> raise (Invalid_grid "It shouldn't happen") (* if it happens, it means there are no undecided square
                                                               left, meaning the problem is solved, meaning we exited
                                                               earlier *)
