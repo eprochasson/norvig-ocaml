@@ -38,7 +38,7 @@ let units =
 
 (* Same, but for the peers *)
 let peers =
-  Array.mapi (fun i u -> List.unique (List.filter (fun el -> el <> i) (List.flatten u))) units
+  Array.mapi (fun i u -> List.unique (List.filter ((<>) i) (List.flatten u))) units
 
 (***********************************************************************************************************************
  Helper functions
