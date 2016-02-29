@@ -129,12 +129,12 @@ let display_grid arr: unit =
 (* Square containing more than one value are undecided: retrieve the undecided square with the least number of values *)
 let get_smallest_indecision_square (arr: square_value array): int option =
   let arr' = Array.mapi (fun i e -> (i, num_undecided e)) arr in
-  let (is, _) = Array.fold_left (fun acc e ->
-    let sq, len = acc in (* int option * int *)
-    let sq',len' = e in (* int * int *)
-    match sq with
-    | None -> if (len' > 1) then (Some sq', len') else acc
-    | Some x -> if (len' > 1) && (len' < len) then (Some sq', len') else acc
+  let (is, _) = Array.fold_left (fun (sq, len) (sq', len') ->
+    match sq, len' with
+    | _, 0 | _, 1 -> sq, len
+    | None, _  -> Some sq', len'
+    | _ , l when l < len -> Some sq', len'
+    | _ -> sq, len
   ) (None, 0) arr' in
   is
 
