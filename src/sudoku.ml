@@ -38,7 +38,7 @@ let units =
 
 (* Same, but for the peers *)
 let peers =
-  Array.mapi (fun i u -> List.unique (List.filter (fun el -> el <> i) (List.flatten u))) units
+  Array.mapi (fun i u -> List.unique (List.filter ((<>) i) (List.flatten u))) units
 
 (***********************************************************************************************************************
  Helper functions
@@ -76,7 +76,7 @@ let rec list_first_that_returns (fn: 'a -> 'b option) (l: 'a list): 'b option = 
   | [] -> None
   | hd::tl -> match fn hd with
     | None -> list_first_that_returns fn tl
-    | Some x -> Some x
+    | x -> x
 
 let is_solved (arr: square_value array): bool =
   let array_all = (fun fn arr -> Array.fold_left (fun acc e -> acc && (fn e)) true arr) in
